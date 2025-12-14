@@ -1,0 +1,53 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: Check for Android project
+        id: check_gradlew
+        run: |
+          if [ -f "gradlew" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Android project not found - gradlew does not exist. Skipping build."
+          fi
+      
+      - name: Grant execute permission for gradlew
+        if: steps.check_gradlew.outputs.exists == 'true'
+        run: chmod +x gradlew
+      
+      - name: Build APK
+        if: steps.check_gradlew.outputs.exists == 'true'
+        run: ./gradlew assembleDebug
+      
+      - name: Upload APK
+        if: steps.check_gradlew.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: app/build/outputs/apk/debug/*.apk
